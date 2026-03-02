@@ -26,7 +26,7 @@ export default function NavbarClient({ username }: { username: string | null }) 
                          flex items-center justify-center font-semibold text-xs">
           {(username?.[0] ?? '?').toUpperCase()}
         </span>
-        <span className="max-w-[120px] truncate">{username ?? 'Me'}</span>
+        <span className="hidden sm:inline max-w-[120px] truncate">{username ?? 'Me'}</span>
       </button>
 
       {open && (

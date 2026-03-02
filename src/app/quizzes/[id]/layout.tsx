@@ -51,7 +51,7 @@ export default async function QuizLayout({
   const q = quiz as Quiz
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
       {/* Quiz header */}
       <div className="mb-6">
         <p className="text-sm text-gray-400 mb-1">
@@ -67,7 +67,7 @@ export default async function QuizLayout({
       </div>
 
       {/* Tab bar */}
-      <nav className="flex gap-1 mb-6 border-b border-gray-200">
+      <nav className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
         <TabLink href={`/quizzes/${params.id}`} label="Take" />
         {canWrite  && <TabLink href={`/quizzes/${params.id}/edit`}    label="Edit"    />}
         {canAnalyze && <TabLink href={`/quizzes/${params.id}/analyze`} label="Analyze" />}

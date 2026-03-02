@@ -118,7 +118,7 @@ export default function QuizTakerForm({
       {questions.map((q, idx) => {
         const draft = drafts[q.id]
         return (
-          <div key={q.id} className="card">
+          <div key={q.id} className="card p-4 sm:p-6">
             <p className="text-sm font-semibold text-gray-800 mb-4">
               <span className="text-brand-600 mr-2">{idx + 1}.</span>
               {q.question_text}

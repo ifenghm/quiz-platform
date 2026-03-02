@@ -24,15 +24,15 @@ export default async function Navbar() {
         </Link>
 
         <nav className="flex items-center gap-4">
-          <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
+          <Link href="/" className="hidden sm:block text-sm text-gray-600 hover:text-gray-900">
             Explore
           </Link>
           {user ? (
             <>
-              <Link href="/dashboard" className="text-sm text-gray-600 hover:text-gray-900">
+              <Link href="/dashboard" className="hidden sm:block text-sm text-gray-600 hover:text-gray-900">
                 Dashboard
               </Link>
-              <Link href="/quizzes/create" className="btn-primary text-sm py-1.5">
+              <Link href="/quizzes/create" className="hidden sm:inline-flex btn-primary text-sm py-1.5">
                 + New Quiz
               </Link>
               <NavbarClient username={username} />

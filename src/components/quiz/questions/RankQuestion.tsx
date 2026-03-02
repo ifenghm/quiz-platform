@@ -23,7 +23,7 @@ export default function RankQuestion({ config, value, onChange, disabled }: Prop
           type="button"
           disabled={disabled}
           onClick={() => onChange(n)}
-          className={`w-10 h-10 rounded-lg border-2 font-semibold text-sm transition-colors
+          className={`w-11 h-11 rounded-lg border-2 font-semibold text-sm transition-colors
             ${value === n
               ? 'border-brand-600 bg-brand-600 text-white'
               : 'border-gray-200 bg-white text-gray-700 hover:border-brand-400 hover:bg-brand-50'
