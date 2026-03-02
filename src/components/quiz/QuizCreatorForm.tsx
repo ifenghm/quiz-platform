@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type {
-  Quiz, Question, QuizDraft, QuestionDraft, QuestionType,
+  Quiz, Question, QuizDraft, QuestionDraft, QuestionType, AnswerValue,
   BinaryConfig, RankConfig, ScaleConfig, StringConfig, MultiChoiceConfig,
 } from '@/types'
 
@@ -28,22 +28,25 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
   const isEdit   = !!existingQuiz
 
   const [meta, setMeta] = useState<Omit<QuizDraft, 'questions'>>({
-    title:          existingQuiz?.title          ?? '',
-    description:    existingQuiz?.description    ?? '',
-    read_access:    existingQuiz?.read_access    ?? 'public',
-    write_access:   existingQuiz?.write_access   ?? 'creator_only',
-    analyze_access: existingQuiz?.analyze_access ?? 'creator_only',
-    open_at:        existingQuiz?.open_at        ?? '',
-    close_at:       existingQuiz?.close_at       ?? '',
+    title:                  existingQuiz?.title                  ?? '',
+    description:            existingQuiz?.description            ?? '',
+    read_access:            existingQuiz?.read_access            ?? 'public',
+    write_access:           existingQuiz?.write_access           ?? 'creator_only',
+    analyze_access:         existingQuiz?.analyze_access         ?? 'creator_only',
+    open_at:                existingQuiz?.open_at                ?? '',
+    close_at:               existingQuiz?.close_at               ?? '',
+    reveal_correct_answers: existingQuiz?.reveal_correct_answers ?? false,
   })
 
   const [questions, setQuestions] = useState<QuestionDraft[]>(
     existingQuestions?.map(q => ({
-      id:            q.id,
-      question_text: q.question_text,
-      question_type: q.question_type,
-      order_index:   q.order_index,
-      config:        q.config,
+      id:             q.id,
+      question_text:  q.question_text,
+      question_type:  q.question_type,
+      order_index:    q.order_index,
+      config:         q.config,
+      correct_answer: q.correct_answer ?? null,
+      image_url:      q.image_url ?? null,
     })) ?? []
   )
 
@@ -54,10 +57,11 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
     setQuestions(prev => [
       ...prev,
       {
-        question_text: '',
-        question_type: type,
-        order_index:   prev.length,
-        config:        DEFAULT_CONFIG[type] as QuizDraft['questions'][0]['config'],
+        question_text:  '',
+        question_type:  type,
+        order_index:    prev.length,
+        config:         DEFAULT_CONFIG[type] as QuizDraft['questions'][0]['config'],
+        correct_answer: null,
       },
     ])
   }
@@ -107,13 +111,14 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
       const { error: uErr } = await supabase
         .from('quizzes')
         .update({
-          title:          meta.title,
-          description:    meta.description || null,
-          read_access:    meta.read_access,
-          write_access:   meta.write_access,
-          analyze_access: meta.analyze_access,
-          open_at:        meta.open_at  || null,
-          close_at:       meta.close_at || null,
+          title:                  meta.title,
+          description:            meta.description || null,
+          read_access:            meta.read_access,
+          write_access:           meta.write_access,
+          analyze_access:         meta.analyze_access,
+          open_at:                meta.open_at  || null,
+          close_at:               meta.close_at || null,
+          reveal_correct_answers: meta.reveal_correct_answers,
         })
         .eq('id', quizId!)
       if (uErr) { setError(uErr.message); setLoading(false); return }
@@ -121,14 +126,15 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
       const { data, error: iErr } = await supabase
         .from('quizzes')
         .insert({
-          title:          meta.title,
-          description:    meta.description || null,
-          creator_id:     userId,
-          read_access:    meta.read_access,
-          write_access:   meta.write_access,
-          analyze_access: meta.analyze_access,
-          open_at:        meta.open_at  || null,
-          close_at:       meta.close_at || null,
+          title:                  meta.title,
+          description:            meta.description || null,
+          creator_id:             userId,
+          read_access:            meta.read_access,
+          write_access:           meta.write_access,
+          analyze_access:         meta.analyze_access,
+          open_at:                meta.open_at  || null,
+          close_at:               meta.close_at || null,
+          reveal_correct_answers: meta.reveal_correct_answers,
         })
         .select('id')
         .single()
@@ -144,11 +150,13 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
     if (questions.length > 0) {
       const { error: qErr } = await supabase.from('questions').insert(
         questions.map((q, i) => ({
-          quiz_id:       quizId!,
-          question_text: q.question_text,
-          question_type: q.question_type,
-          order_index:   i,
-          config:        q.config,
+          quiz_id:        quizId!,
+          question_text:  q.question_text,
+          question_type:  q.question_type,
+          order_index:    i,
+          config:         q.config,
+          correct_answer: q.correct_answer ?? null,
+          image_url:      q.image_url ?? null,
         }))
       )
       if (qErr) { setError(qErr.message); setLoading(false); return }
@@ -220,6 +228,16 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
               onChange={e => setMeta(m => ({ ...m, close_at: e.target.value }))} />
           </div>
         </div>
+
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="rounded"
+            checked={meta.reveal_correct_answers}
+            onChange={e => setMeta(m => ({ ...m, reveal_correct_answers: e.target.checked }))}
+          />
+          <span className="text-sm text-gray-700">Reveal correct answers after submission</span>
+        </label>
       </div>
 
       {/* Questions */}
@@ -274,7 +292,55 @@ function QuestionEditor({
   onRemove:       () => void
   onMove:         (d: -1 | 1) => void
 }>) {
+  const supabase = createClient()
   const cfg = q.config as unknown as Record<string, unknown>
+  const [correctEnabled, setCorrectEnabled] = useState(q.correct_answer != null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadError(null)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setUploading(false); return }
+
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `${user.id}/${crypto.randomUUID()}.${ext}`
+
+    const { error } = await supabase.storage.from('question-images').upload(path, file)
+    if (error) {
+      setUploadError(error.message)
+    } else {
+      const { data } = supabase.storage.from('question-images').getPublicUrl(path)
+      onChange({ image_url: data.publicUrl })
+    }
+    setUploading(false)
+  }
+
+  async function handleImageRemove() {
+    if (!q.image_url) return
+    // Extract the storage path from the public URL
+    const storagePath = q.image_url.split('/question-images/')[1]
+    if (storagePath) {
+      await supabase.storage.from('question-images').remove([storagePath])
+    }
+    onChange({ image_url: null })
+  }
+
+  function toggleCorrect(enabled: boolean) {
+    setCorrectEnabled(enabled)
+    if (!enabled) onChange({ correct_answer: null })
+  }
+
+  function setCorrectAnswer(val: AnswerValue) {
+    onChange({ correct_answer: val })
+  }
+
+  // Determine current correct answer value with sensible defaults
+  const correctVal = q.correct_answer
 
   return (
     <div className="card border-l-4 border-brand-400 space-y-3">
@@ -299,6 +365,26 @@ function QuestionEditor({
         onChange={e => onChange({ question_text: e.target.value })}
         placeholder="Question text…"
       />
+
+      {/* Image attachment */}
+      <div>
+        {q.image_url ? (
+          <div className="relative inline-block">
+            <img src={q.image_url} alt="" className="max-h-48 rounded-lg border border-gray-200 object-contain" />
+            <button
+              type="button"
+              onClick={handleImageRemove}
+              className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600"
+            >✕</button>
+          </div>
+        ) : (
+          <label className={`inline-flex items-center gap-1.5 text-xs cursor-pointer text-gray-400 hover:text-brand-600 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+            {uploading ? 'Uploading…' : '+ Add image'}
+          </label>
+        )}
+        {uploadError && <p className="text-xs text-red-500 mt-1">{uploadError}</p>}
+      </div>
 
       {/* Config section */}
       {q.question_type === 'binary' && (
@@ -411,6 +497,113 @@ function QuestionEditor({
           </div>
         </div>
       )}
+
+      {/* Correct answer section */}
+      <div className="border-t pt-3 space-y-2">
+        <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="rounded"
+            checked={correctEnabled}
+            onChange={e => toggleCorrect(e.target.checked)}
+          />
+          Set correct answer
+        </label>
+
+        {correctEnabled && (
+          <div className="pl-1">
+            {q.question_type === 'binary' && (
+              <div className="flex gap-2">
+                {[true, false].map(val => (
+                  <button
+                    key={String(val)}
+                    type="button"
+                    onClick={() => setCorrectAnswer(val)}
+                    className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
+                      correctVal === val
+                        ? 'bg-brand-500 text-white border-brand-500'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-brand-400'
+                    }`}
+                  >
+                    {val ? String(cfg.trueLabel ?? 'True') : String(cfg.falseLabel ?? 'False')}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {q.question_type === 'rank' && (
+              <input
+                className="input text-xs w-32"
+                type="number"
+                min={Number(cfg.min)}
+                max={Number(cfg.max)}
+                value={correctVal != null ? Number(correctVal) : ''}
+                onChange={e => setCorrectAnswer(Number(e.target.value))}
+                placeholder={`${cfg.min}–${cfg.max}`}
+              />
+            )}
+
+            {q.question_type === 'scale' && (
+              <input
+                className="input text-xs w-32"
+                type="number"
+                min={Number(cfg.min)}
+                max={Number(cfg.max)}
+                step={Number(cfg.step ?? 1)}
+                value={correctVal != null ? Number(correctVal) : ''}
+                onChange={e => setCorrectAnswer(Number(e.target.value))}
+                placeholder={`${cfg.min}–${cfg.max}`}
+              />
+            )}
+
+            {q.question_type === 'string' && (
+              <input
+                className="input text-xs"
+                value={correctVal != null ? String(correctVal) : ''}
+                onChange={e => setCorrectAnswer(e.target.value)}
+                placeholder="Correct answer text"
+              />
+            )}
+
+            {q.question_type === 'multichoice' && String(cfg.subtype) === 'multichoicesor' && (
+              <select
+                className="input text-xs"
+                value={correctVal != null ? String(correctVal) : ''}
+                onChange={e => setCorrectAnswer(e.target.value)}
+              >
+                <option value="">— select correct choice —</option>
+                {(cfg.choices as string[] ?? []).map((c: string, ci: number) => (
+                  <option key={ci} value={c}>{c}</option>
+                ))}
+              </select>
+            )}
+
+            {q.question_type === 'multichoice' && String(cfg.subtype) === 'multiplechoicesand' && (
+              <div className="space-y-1">
+                {(cfg.choices as string[] ?? []).map((c: string, ci: number) => {
+                  const selected = Array.isArray(correctVal) ? (correctVal as string[]).includes(c) : false
+                  return (
+                    <label key={ci} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="rounded"
+                        checked={selected}
+                        onChange={e => {
+                          const prev = Array.isArray(correctVal) ? (correctVal as string[]) : []
+                          setCorrectAnswer(
+                            e.target.checked ? [...prev, c] : prev.filter(x => x !== c)
+                          )
+                        }}
+                      />
+                      {c}
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

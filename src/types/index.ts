@@ -55,20 +55,21 @@ export interface UserAccount {
 }
 
 export interface Quiz {
-  id:             string
-  title:          string
-  description:    string | null
-  creator_id:     string
-  read_access:    ReadAccess
-  write_access:   WriteAccess
-  analyze_access: AnalyzeAccess
-  open_at:        string | null
-  close_at:       string | null
-  created_at:     string
-  updated_at:     string
+  id:                      string
+  title:                   string
+  description:             string | null
+  creator_id:              string
+  read_access:             ReadAccess
+  write_access:            WriteAccess
+  analyze_access:          AnalyzeAccess
+  open_at:                 string | null
+  close_at:                string | null
+  created_at:              string
+  updated_at:              string
+  reveal_correct_answers:  boolean
   // Joined
-  creator?:       UserAccount
-  questions?:     Question[]
+  creator?:                UserAccount
+  questions?:              Question[]
 }
 
 export interface QuizPermission {
@@ -81,13 +82,15 @@ export interface QuizPermission {
 }
 
 export interface Question {
-  id:            string
-  quiz_id:       string
-  question_text: string
-  question_type: QuestionType
-  order_index:   number
-  config:        QuestionConfig
-  created_at:    string
+  id:             string
+  quiz_id:        string
+  question_text:  string
+  question_type:  QuestionType
+  order_index:    number
+  config:         QuestionConfig
+  created_at:     string
+  correct_answer?: AnswerValue | null
+  image_url?:     string | null
 }
 
 // ─── Answer subtypes ─────────────────────────────────────────────────────────
@@ -147,22 +150,25 @@ export type Answer = BinaryAnswer | RankAnswer | ScaleAnswer | StringAnswer | Mu
 // ─── Form / UI state types ───────────────────────────────────────────────────
 
 export interface QuestionDraft {
-  id?:           string
-  question_text: string
-  question_type: QuestionType
-  order_index:   number
-  config:        QuestionConfig
+  id?:             string
+  question_text:   string
+  question_type:   QuestionType
+  order_index:     number
+  config:          QuestionConfig
+  correct_answer?: AnswerValue | null
+  image_url?:      string | null
 }
 
 export interface QuizDraft {
-  title:          string
-  description:    string
-  read_access:    ReadAccess
-  write_access:   WriteAccess
-  analyze_access: AnalyzeAccess
-  open_at:        string
-  close_at:       string
-  questions:      QuestionDraft[]
+  title:                   string
+  description:             string
+  read_access:             ReadAccess
+  write_access:            WriteAccess
+  analyze_access:          AnalyzeAccess
+  open_at:                 string
+  close_at:                string
+  reveal_correct_answers:  boolean
+  questions:               QuestionDraft[]
 }
 
 export type AnswerValue = boolean | number | string | string[]

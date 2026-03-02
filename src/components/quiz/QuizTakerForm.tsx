@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import ImageViewer         from './ImageViewer'
 import BinaryQuestion      from './questions/BinaryQuestion'
 import RankQuestion        from './questions/RankQuestion'
 import ScaleQuestion       from './questions/ScaleQuestion'
@@ -13,16 +14,45 @@ import type {
   BinaryConfig, RankConfig, ScaleConfig, StringConfig, MultiChoiceConfig,
 } from '@/types'
 
+// ─── Grading logic ────────────────────────────────────────────────────────────
+
+function gradeAnswer(question: Question, userValue: AnswerValue): boolean {
+  const correct = question.correct_answer
+  if (correct == null) return false
+
+  switch (question.question_type) {
+    case 'binary':
+    case 'rank':
+    case 'scale':
+      return userValue === correct
+
+    case 'string':
+      return (
+        String(userValue).trim().toLowerCase() ===
+        String(correct).trim().toLowerCase()
+      )
+
+    case 'multichoice': {
+      const userArr   = (Array.isArray(userValue) ? userValue : [userValue as string]).slice().sort()
+      const correctArr = (Array.isArray(correct)  ? correct  : [correct  as string]).slice().sort()
+      return userArr.join('\x00') === correctArr.join('\x00')
+    }
+  }
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface Props {
-  quizId:           string
-  userId:           string
-  questions:        Question[]
-  existingAnswers:  Answer[]
-  alreadyCompleted: boolean
+  quizId:                string
+  userId:                string
+  questions:             Question[]
+  existingAnswers:       Answer[]
+  alreadyCompleted:      boolean
+  revealCorrectAnswers:  boolean
 }
 
 export default function QuizTakerForm({
-  quizId, userId, questions, existingAnswers, alreadyCompleted,
+  quizId, userId, questions, existingAnswers, alreadyCompleted, revealCorrectAnswers,
 }: Props) {
   const supabase = createClient()
   const router   = useRouter()
@@ -45,9 +75,9 @@ export default function QuizTakerForm({
     initialDrafts[a.question_id] = { question_id: a.question_id, answer_type: a.answer_type, value }
   }
 
-  const [drafts,   setDrafts]   = useState<Record<string, AnswerDraft>>(initialDrafts)
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [drafts,    setDrafts]    = useState<Record<string, AnswerDraft>>(initialDrafts)
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(alreadyCompleted)
 
   function setAnswer(question: Question, value: AnswerValue) {
@@ -111,18 +141,69 @@ export default function QuizTakerForm({
 
   if (submitted) {
     return (
-      <div className="card text-center py-16">
-        <div className="text-4xl mb-4">✅</div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Responses saved!</h2>
-        <p className="text-gray-500 text-sm mb-6">
-          You can retake the quiz to update your answers.
-        </p>
-        <button
-          className="btn-secondary"
-          onClick={() => setSubmitted(false)}
-        >
-          Retake Quiz
-        </button>
+      <div className="space-y-4">
+        <div className="card text-center py-10">
+          <div className="text-4xl mb-4">✅</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Responses saved!</h2>
+          <p className="text-gray-500 text-sm mb-6">
+            You can retake the quiz to update your answers.
+          </p>
+          <button
+            className="btn-secondary"
+            onClick={() => setSubmitted(false)}
+          >
+            Retake Quiz
+          </button>
+        </div>
+
+        {revealCorrectAnswers && (
+          <div className="card space-y-4">
+            <h3 className="font-semibold text-gray-800">Results</h3>
+            {questions.map((q, idx) => {
+              const draft = drafts[q.id]
+              const hasCorrect = q.correct_answer != null
+              const userValue = draft?.value
+
+              let isCorrect: boolean | null = null
+              if (hasCorrect && userValue != null) {
+                isCorrect = gradeAnswer(q, userValue)
+              }
+
+              return (
+                <div key={q.id} className="border rounded-lg p-4 space-y-2">
+                  <p className="text-sm font-medium text-gray-800">
+                    <span className="text-brand-600 mr-2">{idx + 1}.</span>
+                    {q.question_text}
+                  </p>
+                  <ImageViewer url={q.image_url} />
+
+                  <div className="text-sm text-gray-600">
+                    <span className="text-gray-400 text-xs uppercase tracking-wide mr-1">Your answer:</span>
+                    <span>{formatAnswerValue(userValue, q)}</span>
+                  </div>
+
+                  {hasCorrect ? (
+                    <div className="flex items-center gap-2">
+                      {isCorrect ? (
+                        <span className="text-green-600 font-medium text-sm">Correct</span>
+                      ) : (
+                        <>
+                          <span className="text-red-500 font-medium text-sm">Incorrect</span>
+                          <span className="text-gray-400 text-xs">—</span>
+                          <span className="text-xs text-gray-500">
+                            Correct: {formatAnswerValue(q.correct_answer as AnswerValue, q)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">No correct answer set</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     )
   }
@@ -137,6 +218,7 @@ export default function QuizTakerForm({
               <span className="text-brand-600 mr-2">{idx + 1}.</span>
               {q.question_text}
             </p>
+            <ImageViewer url={q.image_url} />
 
             {q.question_type === 'binary' && (
               <BinaryQuestion
@@ -190,4 +272,16 @@ export default function QuizTakerForm({
       </button>
     </form>
   )
+}
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+function formatAnswerValue(val: AnswerValue | null | undefined, q: Question): string {
+  if (val == null) return '—'
+  if (q.question_type === 'binary') {
+    const cfg = q.config as BinaryConfig
+    return val ? cfg.trueLabel : cfg.falseLabel
+  }
+  if (Array.isArray(val)) return val.join(', ')
+  return String(val)
 }
