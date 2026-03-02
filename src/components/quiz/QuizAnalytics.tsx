@@ -108,6 +108,28 @@ export default function QuizAnalytics({ analytics, totalResponses }: Props) {
             </div>
           )}
 
+          {/* MULTICHOICE — choice bars */}
+          {qa.question.question_type === 'multichoice' && qa.total > 0 && qa.distribution && (
+            <div className="space-y-3">
+              {qa.distribution.map(({ label, count }) => (
+                <div key={label}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-700 truncate max-w-[65%]">{label}</span>
+                    <span className="text-gray-500 shrink-0 ml-2">
+                      {count} <span className="text-gray-400">({pct(count, qa.total)}%)</span>
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-brand-500 rounded-full transition-all"
+                      style={{ width: `${pct(count, qa.total)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* STRING — list */}
           {qa.question.question_type === 'string' && qa.total > 0 && qa.strings && (
             <ul className="space-y-2 max-h-64 overflow-y-auto">

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "ci": "npm run typecheck && npm run lint && npm run build"
+    "ci": "npm run typecheck && npm run lint && npm run build",
+    "sync-migrations": "node scripts/sync-migrations.mjs",
+    "sync-migrations:dry": "node scripts/sync-migrations.mjs --dry-run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.1",

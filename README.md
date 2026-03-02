@@ -184,6 +184,37 @@ Redirect URLs:     https://your-domain.com/auth/callback
 | `npm run typecheck`           | Type-check with `tsc --noEmit` (fast, no output files) |
 | `npm run ci`                  | typecheck + lint + build in sequence                   |
 | `./scripts/check-build.sh`    | Same as `ci` with step-by-step output and stub env vars|
+| `npm run sync-migrations`     | Generate a migration from type changes (see below)     |
+| `npm run sync-migrations:dry` | Preview what the migration would look like             |
+
+### Syncing migrations from types
+
+`scripts/sync-migrations.mjs` keeps `supabase/migrations/` in sync with `src/types/index.ts`. Run it after editing the types file.
+
+**What it detects:**
+
+| Change in `types/index.ts` | Generated SQL |
+|---|---|
+| Value added/removed from a union type | Rebuilds the `CHECK (… IN (…))` constraint |
+| Field added to a row interface | `ALTER TABLE … ADD COLUMN IF NOT EXISTS …` |
+| Field removed from a row interface | Commented-out `DROP COLUMN` with a warning (requires manual review) |
+| `AnswerType` changed | Rebuilds the `answer_type_matches_value` compound constraint |
+
+```bash
+# Preview without writing anything
+npm run sync-migrations:dry
+
+# Write a new numbered file to supabase/migrations/
+npm run sync-migrations
+```
+
+Running the command when no changes are detected prints:
+
+```
+✅ Schema is already in sync — no migration needed.
+```
+
+The script maps TypeScript names to SQL identifiers via `ENUM_MAPPINGS` and `INTERFACE_MAPPINGS` at the top of the file. Add entries there when introducing new tracked types.
 
 ### Checking types without a full build
 
@@ -211,10 +242,11 @@ quizzes
   └── quiz_permissions[]   (read | write | analyze grants per user)
 
 answers
-  ├── BinaryAnswer  — boolean         (true / false proportion)
-  ├── RankAnswer    — integer         (discrete 1–N scale)
-  ├── ScaleAnswer   — float           (continuous min–max slider)
-  └── StringAnswer  — text            (free-form input)
+  ├── BinaryAnswer      — boolean     (true / false proportion)
+  ├── RankAnswer        — integer     (discrete 1–N scale)
+  ├── ScaleAnswer       — float       (continuous min–max slider)
+  ├── StringAnswer      — text        (free-form input)
+  └── MultiChoiceAnswer — text/JSON   (single or multi-select choices)
 ```
 
 Access is enforced at the database level via Postgres RLS — the application never filters data manually.

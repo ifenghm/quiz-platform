@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import QuizAnalytics from '@/components/quiz/QuizAnalytics'
-import type { Question, Answer, QuestionAnalytics, RankConfig, ScaleConfig } from '@/types'
+import type { Question, Answer, QuestionAnalytics, RankConfig, ScaleConfig, MultiChoiceConfig } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,6 +98,22 @@ export default async function AnalyzePage({ params }: { params: { id: string } }
         ? qAnswers.reduce((s, a) => s + (a.scale_value ?? 0), 0) / total
         : 0
       return { question: q, total, distribution: dist, mean }
+    }
+
+    if (q.question_type === 'multichoice') {
+      const cfg = q.config as MultiChoiceConfig
+      const countMap: Record<string, number> = {}
+      for (const choice of cfg.choices) countMap[choice] = 0
+      qAnswers.forEach(a => {
+        if (!a.string_value) return
+        try {
+          const parsed = JSON.parse(a.string_value)
+          const selected: string[] = Array.isArray(parsed) ? parsed : [parsed]
+          selected.forEach(c => { if (c in countMap) countMap[c]++ })
+        } catch {}
+      })
+      const distribution = cfg.choices.map(c => ({ label: c, count: countMap[c] }))
+      return { question: q, total, distribution }
     }
 
     // string

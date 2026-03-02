@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import BinaryQuestion from './questions/BinaryQuestion'
-import RankQuestion   from './questions/RankQuestion'
-import ScaleQuestion  from './questions/ScaleQuestion'
-import StringQuestion from './questions/StringQuestion'
+import BinaryQuestion      from './questions/BinaryQuestion'
+import RankQuestion        from './questions/RankQuestion'
+import ScaleQuestion       from './questions/ScaleQuestion'
+import StringQuestion      from './questions/StringQuestion'
+import MultiChoiceQuestion from './questions/MultiChoiceQuestion'
 import type {
   Question, Answer, AnswerDraft, AnswerValue,
-  BinaryConfig, RankConfig, ScaleConfig, StringConfig,
+  BinaryConfig, RankConfig, ScaleConfig, StringConfig, MultiChoiceConfig,
 } from '@/types'
 
 interface Props {
@@ -29,16 +30,19 @@ export default function QuizTakerForm({
   // Seed drafts from existing answers
   const initialDrafts: Record<string, AnswerDraft> = {}
   for (const a of existingAnswers) {
-    initialDrafts[a.question_id] = {
-      question_id: a.question_id,
-      answer_type: a.answer_type,
-      value: (
-        a.answer_type === 'binary'  ? a.binary_value  :
-        a.answer_type === 'rank'    ? a.rank_value    :
-        a.answer_type === 'scale'   ? a.scale_value   :
+    let value: AnswerValue
+    if (a.answer_type === 'multichoice') {
+      try { value = JSON.parse(a.string_value ?? 'null') ?? [] }
+      catch { value = [] }
+    } else {
+      value = (
+        a.answer_type === 'binary' ? a.binary_value :
+        a.answer_type === 'rank'   ? a.rank_value   :
+        a.answer_type === 'scale'  ? a.scale_value  :
         a.string_value
-      ) as AnswerValue,
+      ) as AnswerValue
     }
+    initialDrafts[a.question_id] = { question_id: a.question_id, answer_type: a.answer_type, value }
   }
 
   const [drafts,   setDrafts]   = useState<Record<string, AnswerDraft>>(initialDrafts)
@@ -60,7 +64,15 @@ export default function QuizTakerForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    const unanswered = questions.filter(q => drafts[q.id] === undefined)
+    const unanswered = questions.filter(q => {
+      const draft = drafts[q.id]
+      if (!draft) return true
+      if (q.question_type === 'multichoice') {
+        const val = draft.value
+        return Array.isArray(val) ? val.length === 0 : val == null
+      }
+      return false
+    })
     if (unanswered.length > 0) {
       setError(`Please answer all questions (${unanswered.length} remaining).`)
       return
@@ -74,10 +86,12 @@ export default function QuizTakerForm({
       question_id: d.question_id,
       answerer_id: userId,
       answer_type: d.answer_type,
-      binary_value: d.answer_type === 'binary' ? d.value as boolean  : null,
-      rank_value:   d.answer_type === 'rank'   ? d.value as number   : null,
-      scale_value:  d.answer_type === 'scale'  ? d.value as number   : null,
-      string_value: d.answer_type === 'string' ? d.value as string   : null,
+      binary_value: d.answer_type === 'binary'      ? d.value as boolean : null,
+      rank_value:   d.answer_type === 'rank'        ? d.value as number  : null,
+      scale_value:  d.answer_type === 'scale'       ? d.value as number  : null,
+      string_value: d.answer_type === 'string'      ? d.value as string
+                  : d.answer_type === 'multichoice' ? JSON.stringify(d.value)
+                  : null,
     }))
 
     const { error: upsertError } = await supabase
@@ -149,6 +163,13 @@ export default function QuizTakerForm({
               <StringQuestion
                 config={q.config as StringConfig}
                 value={draft?.value as string ?? ''}
+                onChange={v => setAnswer(q, v)}
+              />
+            )}
+            {q.question_type === 'multichoice' && (
+              <MultiChoiceQuestion
+                config={q.config as MultiChoiceConfig}
+                value={draft?.value as string | string[] ?? null}
                 onChange={v => setAnswer(q, v)}
               />
             )}

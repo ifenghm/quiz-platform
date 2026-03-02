@@ -5,14 +5,15 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type {
   Quiz, Question, QuizDraft, QuestionDraft, QuestionType,
-  BinaryConfig, RankConfig, ScaleConfig, StringConfig,
+  BinaryConfig, RankConfig, ScaleConfig, StringConfig, MultiChoiceConfig,
 } from '@/types'
 
 const DEFAULT_CONFIG: Record<QuestionType, object> = {
-  binary: { trueLabel: 'Yes', falseLabel: 'No' } as BinaryConfig,
-  rank:   { min: 1, max: 5 }                    as RankConfig,
-  scale:  { min: 0, max: 10, step: 0.5, minLabel: 'Low', maxLabel: 'High' } as ScaleConfig,
-  string: { multiline: false, maxLength: 500 }   as StringConfig,
+  binary:      { trueLabel: 'Yes', falseLabel: 'No' }                           as BinaryConfig,
+  rank:        { min: 1, max: 5 }                                                as RankConfig,
+  scale:       { min: 0, max: 10, step: 0.5, minLabel: 'Low', maxLabel: 'High' } as ScaleConfig,
+  string:      { multiline: false, maxLength: 500 }                              as StringConfig,
+  multichoice: { subtype: 'multichoicesor', choices: ['Option 1', 'Option 2'] }  as MultiChoiceConfig,
 }
 
 interface Props {
@@ -241,7 +242,7 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
         {/* Add question buttons */}
         <div className="flex flex-wrap gap-2 pt-1">
           <span className="text-xs text-gray-400 self-center mr-1">Add question:</span>
-          {(['binary', 'rank', 'scale', 'string'] as QuestionType[]).map(t => (
+          {(['binary', 'rank', 'scale', 'string', 'multichoice'] as QuestionType[]).map(t => (
             <button key={t} type="button" onClick={() => addQuestion(t)}
               className="btn-secondary text-xs py-1.5">
               + {t}
@@ -359,6 +360,54 @@ function QuestionEditor({
             <input className="input text-xs w-24" type="number"
               value={Number(cfg.maxLength ?? 500)}
               onChange={e => onConfigChange('maxLength', Number(e.target.value))} />
+          </div>
+        </div>
+      )}
+
+      {q.question_type === 'multichoice' && (
+        <div className="space-y-3">
+          <div>
+            <label className="label text-xs">Selection type</label>
+            <select
+              className="input text-xs"
+              value={String(cfg.subtype ?? 'multichoicesor')}
+              onChange={e => onConfigChange('subtype', e.target.value)}
+            >
+              <option value="multichoicesor">Single choice (pick one)</option>
+              <option value="multiplechoicesand">Multi-select (pick all that apply)</option>
+            </select>
+          </div>
+          <div>
+            <label className="label text-xs">Choices</label>
+            <div className="space-y-2">
+              {(cfg.choices as string[] ?? []).map((choice: string, ci: number) => (
+                <div key={ci} className="flex gap-2">
+                  <input
+                    className="input text-xs flex-1"
+                    value={choice}
+                    onChange={e => {
+                      const next = [...(cfg.choices as string[])]
+                      next[ci] = e.target.value
+                      onConfigChange('choices', next)
+                    }}
+                    placeholder={`Option ${ci + 1}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onConfigChange('choices', (cfg.choices as string[]).filter((_: string, i: number) => i !== ci))}
+                    className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30"
+                    disabled={(cfg.choices as string[]).length <= 2}
+                  >✕</button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => onConfigChange('choices', [...(cfg.choices as string[] ?? []), ''])}
+              className="btn-secondary text-xs py-1 mt-2"
+            >
+              + Add choice
+            </button>
           </div>
         </div>
       )}

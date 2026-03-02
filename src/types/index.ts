@@ -1,7 +1,8 @@
 // ─── Domain types mirroring the Supabase schema ────────────────────────────
 
-export type QuestionType = 'binary' | 'rank' | 'scale' | 'string'
-export type AnswerType   = 'binary' | 'rank' | 'scale' | 'string'
+export type QuestionType = 'binary' | 'rank' | 'scale' | 'string' | 'multichoice'
+export type AnswerType   = 'binary' | 'rank' | 'scale' | 'string' | 'multichoice'
+export type MultiChoiceSubtype = 'multichoicesor' | 'multiplechoicesand'
 export type ReadAccess    = 'public' | 'restricted' | 'private'
 export type WriteAccess   = 'creator_only' | 'restricted'
 export type AnalyzeAccess = 'creator_only' | 'restricted' | 'public'
@@ -32,11 +33,17 @@ export interface StringConfig {
   maxLength:  number
 }
 
+export interface MultiChoiceConfig {
+  subtype:  MultiChoiceSubtype
+  choices:  string[]
+}
+
 export type QuestionConfig =
   | BinaryConfig
   | RankConfig
   | ScaleConfig
   | StringConfig
+  | MultiChoiceConfig
 
 // ─── Row types ───────────────────────────────────────────────────────────────
 
@@ -127,7 +134,15 @@ export interface StringAnswer extends BaseAnswer {
   string_value: string
 }
 
-export type Answer = BinaryAnswer | RankAnswer | ScaleAnswer | StringAnswer
+export interface MultiChoiceAnswer extends BaseAnswer {
+  answer_type:  'multichoice'
+  binary_value: null
+  rank_value:   null
+  scale_value:  null
+  string_value: string | null  // JSON: string for OR, string[] for AND
+}
+
+export type Answer = BinaryAnswer | RankAnswer | ScaleAnswer | StringAnswer | MultiChoiceAnswer
 
 // ─── Form / UI state types ───────────────────────────────────────────────────
 
@@ -150,7 +165,7 @@ export interface QuizDraft {
   questions:      QuestionDraft[]
 }
 
-export type AnswerValue = boolean | number | string
+export type AnswerValue = boolean | number | string | string[]
 
 export interface AnswerDraft {
   question_id:  string
@@ -166,7 +181,7 @@ export interface QuestionAnalytics {
   // binary
   trueCount?:   number
   falseCount?:  number
-  // rank / scale
+  // rank / scale / multichoice
   distribution?: { label: string; count: number }[]
   mean?:        number
   // string
