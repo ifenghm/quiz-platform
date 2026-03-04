@@ -49,10 +49,11 @@ interface Props {
   existingAnswers:       Answer[]
   alreadyCompleted:      boolean
   revealCorrectAnswers:  boolean
+  userCanChangeAnswers:  boolean
 }
 
 export default function QuizTakerForm({
-  quizId, userId, questions, existingAnswers, alreadyCompleted, revealCorrectAnswers,
+  quizId, userId, questions, existingAnswers, alreadyCompleted, revealCorrectAnswers, userCanChangeAnswers,
 }: Props) {
   const supabase = createClient()
   const router   = useRouter()
@@ -145,15 +146,23 @@ export default function QuizTakerForm({
         <div className="card text-center py-10">
           <div className="text-4xl mb-4">✅</div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Responses saved!</h2>
-          <p className="text-gray-500 text-sm mb-6">
-            You can retake the quiz to update your answers.
-          </p>
-          <button
-            className="btn-secondary"
-            onClick={() => setSubmitted(false)}
-          >
-            Retake Quiz
-          </button>
+          {userCanChangeAnswers ? (
+            <>
+              <p className="text-gray-500 text-sm mb-6">
+                You can retake the quiz to update your answers.
+              </p>
+              <button
+                className="btn-secondary"
+                onClick={() => setSubmitted(false)}
+              >
+                Retake Quiz
+              </button>
+            </>
+          ) : (
+            <p className="text-gray-400 text-sm">
+              The quiz creator has locked answers — changes are not allowed.
+            </p>
+          )}
         </div>
 
         {revealCorrectAnswers && (

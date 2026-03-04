@@ -67,6 +67,7 @@ export interface Quiz {
   created_at:              string
   updated_at:              string
   reveal_correct_answers:  boolean
+  user_can_change_answers: boolean
   // Joined
   creator?:                UserAccount
   questions?:              Question[]
@@ -101,6 +102,7 @@ export interface BaseAnswer {
   question_id: string
   answerer_id: string
   created_at:  string
+  updated_at:  string
   // Joined
   answerer?:   UserAccount
 }
@@ -168,6 +170,7 @@ export interface QuizDraft {
   open_at:                 string
   close_at:                string
   reveal_correct_answers:  boolean
+  user_can_change_answers: boolean
   questions:               QuestionDraft[]
 }
 

@@ -31,7 +31,7 @@ export default async function TakeQuizPage({ params }: { params: { id: string } 
   // Check time window from quiz row
   const { data: quiz } = await supabase
     .from('quizzes')
-    .select('open_at, close_at, title, reveal_correct_answers')
+    .select('open_at, close_at, title, reveal_correct_answers, user_can_change_answers')
     .eq('id', params.id)
     .single()
 
@@ -67,6 +67,7 @@ export default async function TakeQuizPage({ params }: { params: { id: string } 
       existingAnswers={(existingAnswers ?? []) as Answer[]}
       alreadyCompleted={alreadyAnswered}
       revealCorrectAnswers={quiz?.reveal_correct_answers ?? false}
+      userCanChangeAnswers={quiz?.user_can_change_answers ?? true}
     />
   )
 }

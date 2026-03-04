@@ -31,7 +31,16 @@ export default async function AnalyzePage({ params }: { params: { id: string } }
         .eq('permission', 'analyze')
         .maybeSingle()).data)
 
-  if (!canAnalyze) {
+  // Quiz takers can view analytics even without explicit analyze access
+  const hasAnswered = !canAnalyze &&
+    !!(await supabase
+      .from('answers')
+      .select('id')
+      .eq('quiz_id', params.id)
+      .eq('answerer_id', user.id)
+      .maybeSingle()).data
+
+  if (!canAnalyze && !hasAnswered) {
     return (
       <div className="card text-center py-16 text-gray-400">
         You don&apos;t have access to the analytics for this quiz.
@@ -130,6 +139,8 @@ export default async function AnalyzePage({ params }: { params: { id: string } }
     <QuizAnalytics
       analytics={analytics}
       totalResponses={uniqueAnswerers}
+      canDownloadCsv={canAnalyze}
+      quizId={params.id}
     />
   )
 }

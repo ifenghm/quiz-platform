@@ -28,14 +28,15 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
   const isEdit   = !!existingQuiz
 
   const [meta, setMeta] = useState<Omit<QuizDraft, 'questions'>>({
-    title:                  existingQuiz?.title                  ?? '',
-    description:            existingQuiz?.description            ?? '',
-    read_access:            existingQuiz?.read_access            ?? 'public',
-    write_access:           existingQuiz?.write_access           ?? 'creator_only',
-    analyze_access:         existingQuiz?.analyze_access         ?? 'creator_only',
-    open_at:                existingQuiz?.open_at                ?? '',
-    close_at:               existingQuiz?.close_at               ?? '',
-    reveal_correct_answers: existingQuiz?.reveal_correct_answers ?? false,
+    title:                   existingQuiz?.title                   ?? '',
+    description:             existingQuiz?.description             ?? '',
+    read_access:             existingQuiz?.read_access             ?? 'public',
+    write_access:            existingQuiz?.write_access            ?? 'creator_only',
+    analyze_access:          existingQuiz?.analyze_access          ?? 'creator_only',
+    open_at:                 existingQuiz?.open_at                 ?? '',
+    close_at:                existingQuiz?.close_at                ?? '',
+    reveal_correct_answers:  existingQuiz?.reveal_correct_answers  ?? false,
+    user_can_change_answers: existingQuiz?.user_can_change_answers ?? true,
   })
 
   const [questions, setQuestions] = useState<QuestionDraft[]>(
@@ -111,14 +112,15 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
       const { error: uErr } = await supabase
         .from('quizzes')
         .update({
-          title:                  meta.title,
-          description:            meta.description || null,
-          read_access:            meta.read_access,
-          write_access:           meta.write_access,
-          analyze_access:         meta.analyze_access,
-          open_at:                meta.open_at  || null,
-          close_at:               meta.close_at || null,
-          reveal_correct_answers: meta.reveal_correct_answers,
+          title:                   meta.title,
+          description:             meta.description || null,
+          read_access:             meta.read_access,
+          write_access:            meta.write_access,
+          analyze_access:          meta.analyze_access,
+          open_at:                 meta.open_at  || null,
+          close_at:                meta.close_at || null,
+          reveal_correct_answers:  meta.reveal_correct_answers,
+          user_can_change_answers: meta.user_can_change_answers,
         })
         .eq('id', quizId!)
       if (uErr) { setError(uErr.message); setLoading(false); return }
@@ -126,15 +128,16 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
       const { data, error: iErr } = await supabase
         .from('quizzes')
         .insert({
-          title:                  meta.title,
-          description:            meta.description || null,
-          creator_id:             userId,
-          read_access:            meta.read_access,
-          write_access:           meta.write_access,
-          analyze_access:         meta.analyze_access,
-          open_at:                meta.open_at  || null,
-          close_at:               meta.close_at || null,
-          reveal_correct_answers: meta.reveal_correct_answers,
+          title:                   meta.title,
+          description:             meta.description || null,
+          creator_id:              userId,
+          read_access:             meta.read_access,
+          write_access:            meta.write_access,
+          analyze_access:          meta.analyze_access,
+          open_at:                 meta.open_at  || null,
+          close_at:                meta.close_at || null,
+          reveal_correct_answers:  meta.reveal_correct_answers,
+          user_can_change_answers: meta.user_can_change_answers,
         })
         .select('id')
         .single()
@@ -237,6 +240,16 @@ export default function QuizCreatorForm({ userId, existingQuiz, existingQuestion
             onChange={e => setMeta(m => ({ ...m, reveal_correct_answers: e.target.checked }))}
           />
           <span className="text-sm text-gray-700">Reveal correct answers after submission</span>
+        </label>
+
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="rounded"
+            checked={meta.user_can_change_answers}
+            onChange={e => setMeta(m => ({ ...m, user_can_change_answers: e.target.checked }))}
+          />
+          <span className="text-sm text-gray-700">Allow respondents to change their answers</span>
         </label>
       </div>
 

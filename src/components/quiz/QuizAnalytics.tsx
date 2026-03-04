@@ -9,11 +9,13 @@ import type { QuestionAnalytics } from '@/types'
 const PIE_COLORS = ['#4c6ef5', '#f03e3e']
 
 interface Props {
-  analytics:      QuestionAnalytics[]
-  totalResponses: number
+  analytics:       QuestionAnalytics[]
+  totalResponses:  number
+  canDownloadCsv?: boolean
+  quizId?:         string
 }
 
-export default function QuizAnalytics({ analytics, totalResponses }: Props) {
+export default function QuizAnalytics({ analytics, totalResponses, canDownloadCsv, quizId }: Props) {
   if (analytics.length === 0) {
     return (
       <div className="card text-center py-16 text-gray-400">
@@ -25,7 +27,7 @@ export default function QuizAnalytics({ analytics, totalResponses }: Props) {
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-stretch">
         <div className="card flex-1 text-center">
           <p className="text-3xl font-bold text-brand-600">{totalResponses}</p>
           <p className="text-sm text-gray-500 mt-1">Total Respondents</p>
@@ -34,6 +36,16 @@ export default function QuizAnalytics({ analytics, totalResponses }: Props) {
           <p className="text-3xl font-bold text-brand-600">{analytics.length}</p>
           <p className="text-sm text-gray-500 mt-1">Questions</p>
         </div>
+        {canDownloadCsv && quizId && (
+          <div className="card flex items-center justify-center">
+            <a
+              href={`/quizzes/${quizId}/analyze/csv`}
+              className="btn-secondary text-sm whitespace-nowrap"
+            >
+              Download CSV
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Per-question */}
